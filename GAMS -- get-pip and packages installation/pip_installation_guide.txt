@@ -1,0 +1,16 @@
+>> The following instructions aim aid the user for successfully installing the pip package in the GAMS python subfolder and then successfully installing 
+>> other packages (i.e. the "requests" package)
+
+
+1. Download the get-pip.py file from the following url: 
+   https://bootstrap.pypa.io/get-pip.py
+
+2. Save the file in any directory
+
+3. Run the file using the python version of the GAMS subsystem, i.e. assuming that the current directory is the one containing the get-pip.py file:
+   "C://GAMS//34//GMSPython//python.exe" get-pip.py	(full cmd line: 'C:\GAMS\get-pip>"C://GAMS//34//GMSPython//python.exe" get-pip.py')
+
+4. After the successful pip installation we can install the required packages by running the follwing commands:
+   "C:\GAMS\34\GMSPython\Scripts\pip.exe" install XXXXXX
+
+   where XXXXXX denotes the package name (i.e. for the "requests" package the full cmd line is: 'C:\GAMS\get-pip>"C:\GAMS\34\GMSPython\Scripts\pip.exe" install requests')
