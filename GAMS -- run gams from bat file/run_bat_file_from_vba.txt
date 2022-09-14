@@ -1,0 +1,31 @@
+gmsFilePath = ThisWorkbook.Names.Item("GMS_Directory").RefersToRange
+gmsFile = ThisWorkbook.Names.Item("GMS_FileName").RefersToRange
+'
+DiskName = Left(gmsFilePath, 2)
+batFileName = "midTEMPS_BatchFile.bat"
+midTempsBatchFile = gmsFilePath & "\" & batFileName
+'
+' Create the batch file
+fnum = FreeFile()
+Open midTempsBatchFile For Output As #fnum
+  Print #fnum, DiskName
+  Print #fnum, "cd " & gmsFilePath
+  Print #fnum, "GAMS " & gmsFile & " lo=3"
+  Print #fnum, "timeout 0"
+  'Print #fnum, Chr(34) & "C:\Program Files\GAMS23.5\gams.exe" & Chr(34) & " " & Chr(34) & gmsFilePath & "\" & gmsFile & Chr(34)
+Close #fnum
+'
+'MsgBox Chr(34) & "C:\Program Files\GAMS23.6\gams.exe" & Chr(34) & " " & Chr(34) & gmsFilePath & "\" & gmsFile & Chr(34)
+'
+' Run GAMS in command prompt
+Dim wsh As Object
+Set wsh = VBA.CreateObject("Wscript.Shell")
+'wsh.CurrentDirectory = gmsFilePath
+'
+Dim waitOnReturn As Boolean: waitOnReturn = True
+Dim windowStyle As Integer: windowStyle = 1
+'
+wsh.Run Chr(34) & midTempsBatchFile & Chr(34), windowStyle, waitOnReturn
+'
+' Kill the batch file
+Kill midTempsBatchFile
