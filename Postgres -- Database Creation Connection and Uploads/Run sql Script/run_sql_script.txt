@@ -1,0 +1,1 @@
+psql -f "C:\Root\Databases\sales_analysis.sql" "postgres://postgres:Dipbsia_01@localhost:5432/sales_analysis"
