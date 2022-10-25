@@ -1,0 +1,23 @@
+
+>> "General" Tab
+   -------------
+   * Name: XXXXXXXX
+   * Run only when user is logged on: Check
+   * Hidden: Check
+
+>> "Triggers" Tab
+   --------------
+   New trigger > * Settings - Daily: Check
+		 * Start: XX/XX/XXX XX:XX:XX
+		 * Recure every: 1 days
+		 * Repeat task every: 1 hour 
+		 * for a duration of: 1 day
+		 * Enabled: Check
+
+>> "Actions" Tab
+   -------------
+   New action > * Action: Start a program
+                * Program/script: C:\Python39\pythonw.exe
+                * Add arguments (optional): rtbm_results.py
+                * Start in (optional): E:\Scripts\Operations\Market Clearing Data\RTBM Results\    
+
