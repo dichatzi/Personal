@@ -2,6 +2,12 @@ using DataFrames
 using LibPQ
 
 
+"""
+CONNECT TO POSTGRES DATABASE
+--------------------------------
+database: the examined database name
+password: the password for accessing the examined database
+"""
 function connect_to_postgres(database::String, password::String)::LibPQ.Connection
     # Create connection with postgres database
     database_connection = LibPQ.Connection("dbname=$(database) user=postgres password=$(password) host=localhost port=5432");
@@ -15,40 +21,135 @@ end
 UPSERT TABLE
 --------------------------------
 connection: a LibPQ.Connection object that is initialized in the current connection
-input_data: a dataframe that has the (trading_period, clearing_price, agent_action, reward, times_per_pair) columns
+input_data: a dataframe containing the required data
+database_name: the examined database name
+schema_name: the examined schema name
+table_name: the examined table name
+upd_fields: the fields to be updated
+on_fields: the fields that are checked upon to determine if the upd_fields are to be updated or a new row to be inserted
+slice: the size of each examined slice
 """
-function upsert_table(;connection::LibPQ.Connection, input_data::DataFrame)
+function upsert_table(;connection::LibPQ.Connection, input_data::DataFrame, database_name::String, schema_name::String, table_name::String, upd_fields::Vector{String}, on_fields::Vector{String}, slice::Int64=0)
 
-    # Create the query that creates the temporary table based on the original input dataframe
-    temp_table_query = """
-    CREATE TEMPORARY TABLE temp_table AS
-    SELECT * FROM (VALUES $(join(["(" * join(row, ',') * ")" for row in eachrow(input_data)], ',')))
-    AS temp_table (trading_period, clearing_price, agent_action, reward, times_per_pair);
+
+    """ -------------------------------------------------------------------------------------------
+    FIND SLICES -----------------------------------------------------------------------------------
     """
+    # Initialize data
+    no_rows = nrow(input_data)
+    steps = Array{Tuple{Int64,Int64}}(undef, 0)
+    starting_value = 0
+    ending_value = 0
 
-    # Execute the sql query that creates the temporary table
-    temp_table_result = execute(connection, temp_table_query)
+    if slice != 0 && slice < no_rows
 
-    # Initialize data used for updating the examined table
-    updates = "reward = EXCLUDED.reward, times_per_pair = EXCLUDED.times_per_pair"
-    on_fields = "trading_period, clearing_price, agent_action"
-    upd_fields = "reward, times_per_pair"
-    fields = "$(on_fields), $(upd_fields)"
+        # Find quotient and remainder
+        quotient = div(no_rows, slice)
+        remainder = rem(no_rows, slice)
 
-    # Create the query that updates the data on the examined table
-    update_query = """
-    INSERT INTO creg.reinforcement_learning.tabular_rewards ($(fields))
-    SELECT $(fields) FROM temp_table
-    ON CONFLICT ($(on_fields)) DO
-    UPDATE SET 
-    $(updates)
+        # Loop for a number equal to quotient    
+        for e = 1 : quotient
+
+            # Get starting and ending value
+            starting_value = (e-1) * slice + 1
+            ending_value = e * slice
+            
+            # Push tuple to array
+            push!(steps, (starting_value, ending_value))
+
+        end
+
+        # Check if remainder is different than zero and add final step in this case
+        if remainder != 0
+
+            # Push special case to the array
+            push!(steps, (ending_value + 1, ending_value + remainder))
+
+        end
+
+    else
+        push!(steps, (1, no_rows))
+    end
+
+
+    """ -------------------------------------------------------------------------------------------
+    INITIALIZE DATA -------------------------------------------------------------------------------
     """
+    # Initialize strings
+    updates = ""
+    on_fields_string = ""
+    upd_fields_string = ""
+    fields = ""
 
-    # Execute the query that updates the data on the examined table
-    update_result = execute(connection, update_query)
+    # Create the respective variable strings
+    for (index, value) in enumerate(upd_fields)
 
-    # Drop the temporary table
-    drop_result = execute(connection, "DROP TABLE temp_table")
+        # Get index
+        if index == 1
+            prefix = ""
+        else
+            prefix = ", "
+        end
+
+        # Update strings
+        updates = updates * prefix * string(value) * " = EXCLUDED." * string(value)
+        upd_fields_string = upd_fields_string * prefix * string(value)
+
+    end
+
+    for (index, value) in enumerate(on_fields_list)
+
+        # Get index
+        if index == 1
+            prefix = ""
+        else
+            prefix = ", "
+        end
+
+        # Update strings
+        on_fields_string = on_fields_string * prefix * string(value)
+
+    end
+
+    fields = "$(on_fields_string), $(upd_fields_string)"
+
+
+    """ -------------------------------------------------------------------------------------------
+    CREATE QUERIES AND UPDATE DATABASE ------------------------------------------------------------
+    """
+    for (index, step) in enumerate(steps)
+        println(">> Updating slice $(index)")
+
+        # Create examined dataframe
+        examined_data = input_data[step[1]:step[2], :]
+
+        # Create the query that creates the temporary table based on the original input dataframe
+        temp_table_query = """
+        CREATE TEMPORARY TABLE temp_table AS
+        SELECT * FROM (VALUES $(join(["(" * join(row, ',') * ")" for row in eachrow(examined_data)], ',')))
+        AS temp_table ($(fields));
+        """
+ 
+        # Execute the sql query that creates the temporary table
+        temp_table_result = execute(connection, temp_table_query)
+
+        # Create the query that updates the data on the examined table
+        update_query = """
+        INSERT INTO $(database_name).$(schema_name).$(table_name) ($(fields))
+        SELECT $(fields) FROM temp_table
+        ON CONFLICT ($(on_fields_string)) DO
+        UPDATE SET 
+        $(updates)
+        """
+
+        # Execute the query that updates the data on the examined table
+        update_result = execute(connection, update_query)
+
+        # Drop the temporary table
+        drop_result = execute(connection, "DROP TABLE temp_table")
+
+
+    end
     
 end
 
