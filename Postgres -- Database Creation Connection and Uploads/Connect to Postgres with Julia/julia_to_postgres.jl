@@ -174,6 +174,7 @@ end
 
 # Upsert data to database
 upsert_table(connection=conn, input_data=new_data)
+# upsert_table(connection=conn, input_data=voaa, database_name=db_name, schema_name="input_data", table_name="value_of_avoided_activation", upd_fields=["price"], on_fields=["area", "direction"], slice=1000)
 
 # Drop table
 drop_result = execute(conn, "DROP TABLE reinforcement_learning.tabular_rewards");
